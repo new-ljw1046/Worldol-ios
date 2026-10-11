@@ -1,0 +1,17 @@
+# ---- 生成的中间产物，不要提交 ----
+work/
+__pycache__/
+tools/__pycache__/
+
+# 解包出来的游戏资源（307MB / 12651 个文件），由 tools/worldol_archive.py 生成
+ios/webroot/
+
+# Xcode 构建产物
+ios/build/
+ios/WorldOL.xcodeproj/
+ios/*.xcworkspace/
+ios/DerivedData/
+.DS_Store
+
+# 原始 APK 不提交（体积大）
+*.apk

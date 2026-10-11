@@ -1,0 +1,77 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "ios/**"
+      - "tools/**"
+      - "archive/**"
+      - ".github/workflows/build-ios-ipa.yml"
+
+jobs:
+  build:
+    # macOS runner 自带 Xcode（macos-14 = Xcode 15.x）
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 恢复归档分片 → www.bin
+        run: |
+          python3 tools/worldol_archive.py join archive /tmp/www.bin
+
+      - name: 校验归档
+        run: |
+          python3 -m pip install --quiet --break-system-packages pycryptodome || python3 -m pip install --quiet pycryptodome
+          python3 tools/worldol_archive.py info /tmp/www.bin
+
+      - name: 解包出 webroot
+        run: |
+          python3 tools/worldol_archive.py extract /tmp/www.bin ios/webroot
+          test -f ios/webroot/client/standalone.html
+          du -sh ios/webroot
+
+      - name: 安装 XcodeGen
+        run: brew install xcodegen
+
+      - name: 生成 Xcode 工程
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: 编译未签名 App
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project WorldOL.xcodeproj \
+            -scheme WorldOL \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: 打包未签名 IPA
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          APP="build/Build/Products/Release-iphoneos/WorldOL.app"
+          test -d "$APP"
+          rm -rf build/Payload build/WorldOL-unsigned.ipa
+          mkdir -p build/Payload
+          ditto "$APP" "build/Payload/WorldOL.app"
+          ( cd build && zip -qry WorldOL-unsigned.ipa Payload )
+          ls -lh build/WorldOL-unsigned.ipa
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorldOL-unsigned-ipa
+          path: ios/build/WorldOL-unsigned.ipa
+          retention-days: 7
+          compression-level: 0

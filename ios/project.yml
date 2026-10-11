@@ -1,0 +1,46 @@
+name: WorldOL
+
+options:
+  bundleIdPrefix: com.worldol
+  deploymentTarget:
+    iOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    ENABLE_BITCODE: "NO"
+    ALWAYS_SEARCH_USER_PATHS: "NO"
+    CLANG_ENABLE_MODULES: "YES"
+
+targets:
+  WorldOL:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+        excludes:
+          - "Info.plist"
+      # 蓝色文件夹引用：webroot 会原样拷进 App Bundle，
+      # 运行时路径为 WorldOL.app/webroot/...
+      - path: webroot
+        type: folder
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/Info.plist
+        PRODUCT_NAME: WorldOL
+        PRODUCT_BUNDLE_IDENTIFIER: com.worldol.standalone
+        MARKETING_VERSION: "1.9.26"
+        CURRENT_PROJECT_VERSION: "125"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        # 关键：完全不签名，产出的 .app 交给 ESign / 全能签 重新签名。
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGN_ENTITLEMENTS: ""
+        DEVELOPMENT_TEAM: ""
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
+        SWIFT_COMPILATION_MODE: wholemodule
