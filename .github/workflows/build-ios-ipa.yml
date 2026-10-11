@@ -42,19 +42,40 @@ jobs:
         working-directory: ios
         run: xcodegen generate
 
+      - name: 诊断（Xcode 版本 / 工程结构）
+        working-directory: ios
+        run: |
+          xcodebuild -version
+          echo "---- 工程里的 target 与 scheme ----"
+          xcodebuild -list -project WorldOL.xcodeproj || true
+          echo "---- webroot 是否进了 sources ----"
+          ls -d webroot/client 2>/dev/null && echo "webroot 存在" || echo "webroot 缺失"
+
       - name: 编译未签名 App
         working-directory: ios
         run: |
+          set +e
+          # 注意：不要传 CODE_SIGN_IDENTITY=""，空字符串会让工程加载器失败（退出码 74）
           xcodebuild \
             -project WorldOL.xcodeproj \
             -scheme WorldOL \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build > /tmp/build.log 2>&1
+          code=$?
+          echo "==================== xcodebuild 输出（末尾 150 行）===================="
+          tail -n 150 /tmp/build.log
+          echo "======================================================================"
+          echo "xcodebuild exit=$code"
+          if [ $code -ne 0 ]; then
+            # 把错误提升为 GitHub 注解，这样不用登录也能通过 API 读到具体报错
+            grep -E "error:|error |ERROR|does not contain a scheme|cannot be opened|not found" /tmp/build.log \
+              | head -n 25 | while IFS= read -r l; do echo "::error::$l"; done
+          fi
+          exit $code
 
       - name: 打包未签名 IPA
         working-directory: ios

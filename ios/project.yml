@@ -35,12 +35,25 @@ targets:
         CURRENT_PROJECT_VERSION: "125"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: "NO"
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
         # 关键：完全不签名，产出的 .app 交给 ESign / 全能签 重新签名。
-        CODE_SIGN_IDENTITY: ""
+        # 注意：不要写 CODE_SIGN_IDENTITY="" 和 ASSETCATALOG_COMPILER_APPICON_NAME=""，
+        # 空字符串会让 Xcode 的工程加载器直接失败（xcodebuild 退出码 74）。
+        # 关签名只用下面两行就够了。
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGNING_ALLOWED: "NO"
-        CODE_SIGN_ENTITLEMENTS: ""
         DEVELOPMENT_TEAM: ""
         SWIFT_OPTIMIZATION_LEVEL: "-O"
         SWIFT_COMPILATION_MODE: wholemodule
+
+# 显式声明共享 scheme。
+# 不写的话 xcodegen 不一定生成 scheme，`xcodebuild -scheme WorldOL` 就找不到方案。
+schemes:
+  WorldOL:
+    build:
+      targets:
+        WorldOL: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
