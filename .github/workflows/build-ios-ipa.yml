@@ -37,6 +37,13 @@ jobs:
           test -f ios/webroot/client/standalone.html
           du -sh ios/webroot
 
+      - name: 打单机自用补丁（去掉每次启动的「游玩前承诺」）
+        run: |
+          python3 tools/patch_webroot.py ios/webroot
+          grep -q "单机自用补丁" ios/webroot/client/entry-pledge-standalone.js \
+            && echo "补丁已生效" \
+            || { echo "::error::补丁没有写进去"; exit 1; }
+
       - name: 安装 XcodeGen
         run: brew install xcodegen
 

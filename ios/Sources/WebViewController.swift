@@ -104,10 +104,18 @@ final class WebViewController: UIViewController {
         }
 
         do {
-            try server.start()
+            // 必须用固定端口，否则每次启动 origin 都不同，localStorage 存档读不到。
+            try server.start(preferredPort: LocalHTTPServer.stablePort)
         } catch {
-            showFatal("本地资源服务启动失败：\n\(error.localizedDescription)")
-            return
+            // 固定端口被占用（例如上一次进程还没退干净）时退化为随机端口。
+            // 游戏仍能起来，但本次是全新 origin，读不到旧存档。
+            NSLog("[WorldOL] 固定端口 \(LocalHTTPServer.stablePort) 不可用（\(error)），改用随机端口")
+            do {
+                try server.start(preferredPort: 0)
+            } catch {
+                showFatal("本地资源服务启动失败：\n\(error.localizedDescription)")
+                return
+            }
         }
 
         let urlString = "http://127.0.0.1:\(server.port)/client/standalone.html"

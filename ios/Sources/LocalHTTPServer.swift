@@ -18,6 +18,17 @@ final class LocalHTTPServer {
     private let queue = DispatchQueue(label: "com.worldol.httpserver", qos: .userInitiated)
     private var listener: NWListener?
 
+    /// 固定监听端口。
+    ///
+    /// ⚠️ 这个值必须固定，不能让系统随机分配。
+    ///
+    /// localStorage 是按 origin（scheme + host + **port**）隔离的。端口一变就是一块
+    /// 全新的存储空间，游戏存档（localStorage 键 `worldol-standalone-world`）会整个
+    /// “消失”，表现就是每次启动都要求重新创建角色。
+    ///
+    /// 之前这里传的是 0（让系统分配临时端口），正是它导致存档不持久。
+    static let stablePort: UInt16 = 47653
+
     /// 实际监听到的端口。
     private(set) var port: UInt16 = 0
 
