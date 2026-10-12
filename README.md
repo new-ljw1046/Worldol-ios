@@ -229,12 +229,57 @@ play_on_iphone.ps1            路线 A：起局域网服务
 
 ---
 
-## 七、已知风险 / 注意点
+## 七、实机反馈后的两处修复（v2）
+
+App 装到 iPhone 上跑起来后，实测反馈了两个问题，都已修复：
+
+### 1. 存档不持久：每次启动都要重新建角色 ❌ → ✅
+
+**这是我的 bug，不是游戏的问题。**
+
+`WebViewController` 里原来写的是 `server.start()`，端口参数默认 0，也就是让系统
+**随机分配临时端口**。而浏览器存储（localStorage）是**按 origin 隔离的，端口算在
+origin 里**。端口每次都变 → 每次都是一块全新的存储空间 → 游戏存档
+（localStorage 键 `worldol-standalone-world`）自然读不到。
+
+修复：`LocalHTTPServer.stablePort = 47653`，改成固定端口。
+端口被占用时（上次进程没退干净）会退化为随机端口，游戏仍能启动，但那次读不到旧档。
+
+> 注：之前用随机端口那几次的存档本来就没落盘，找不回来了。修好之后新建的角色会一直保留。
+
+### 2. 每次启动都要输入「游玩前承诺」→ 已去掉
+
+**这个是修改者的有意设计，不是 bug。** `client/entry-pledge-standalone.js` 里原作者写着：
+
+```js
+// Nothing is persisted: reopening the page always requires confirmation.
+```
+
+而且它是**硬门槛**：在你输入正确之前，游戏核心 `gd.js` 根本不会被加载。
+
+修复：`tools/patch_webroot.py`，在构建时把这个脚本替换成直接加载 `gd.js` 的版本，
+并把弹窗元素从 DOM 移除。因为 webroot 每次都从 `www.bin` 重新解包，所以补丁必须在
+构建流程里打，工作流中已加对应步骤：
+
+```bash
+python3 tools/patch_webroot.py ios/webroot        # 打补丁
+python3 tools/patch_webroot.py ios/webroot --restore   # 还原原版
+```
+
+已实测验证（真实 Chrome 加载）：`entry-pledge-dialog === null` 为 `true`，
+`window.egret` 为 `object`，游戏直接进主界面。
+
+---
+
+## 八、已知风险 / 注意点
 
 1. **`IntegrityGuard` 在原 APK 里校验 APK 签名证书**，用来做授权绑定。
    本工程不实现它——单机版本身不需要联网激活，这条路绕开了整套授权校验。
-2. **首次进入需要在对话框里输入承诺语**（这是修改者加的进入门槛，不是崩溃）。
-3. **307 MB 的 App 体积**：IPA 打 zip 后约 120–150 MB，ESign 签名会比较慢，属正常。
-4. **免费 Apple ID 签名 7 天过期**；企业证书签名有被吊销风险，这是签名工具本身的限制。
+2. **307 MB 的 App 体积**：IPA 打 zip 后约 120–150 MB，ESign 签名会比较慢，属正常。
+3. **免费 Apple ID 签名 7 天过期**；企业证书签名有被吊销风险，这是签名工具本身的限制。
+4. **首次启动会预载约 190 MB 数据**，低内存机型有被系统杀进程的可能。
 5. 若游戏侧以后新增功能依赖 Android 原生能力，需要在 `WebViewController` 里补对应的桥。
    当前版本**完全没有原生桥接**（已全量扫描确认）。
+6. **不要改 `LocalHTTPServer.stablePort`**，改了会让已有存档全部失效（origin 变了）。
+7. `WorldOL-unsigned.ipa` 已加入 `.gitignore`——它 121.7 MB，超过 GitHub
+   单文件 100 MB 限制，推不上去。
